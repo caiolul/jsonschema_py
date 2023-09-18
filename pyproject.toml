@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "json-schema"
+version = "0.1.0"
+description = ""
+authors = ["caiolul <caiolucena.il@gmail.com>"]
+readme = "README.md"
+packages = [{include = "json_schema"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+jsonschema = "^4.19.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
