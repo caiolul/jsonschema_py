@@ -1,6 +1,5 @@
 import json
-from jsonschema import Draft7Validator
-from jsonschema.validators import validator_for
+from jsonschema import Draft7Validator, validators
 
 def generate_json_schema(json_data):
     schema = {}
@@ -23,42 +22,36 @@ def generate_json_schema(json_data):
     walk(json_data, schema)
     return schema
 
-# Exemplo de uso
-json_data = {
-	"nicename": "JSML36 - DEBÊNTURE JSL SA - 07/2020",
-	"identifier": "jsml36:deb",
-	"asset_type_mr": "DEBÊNTURES",
-	"first_quote_date": "2013-11-04",
-	"last_quote_date": "2020-07-15",
-	"last_update": "2020-07-15",
-	"has_quotes": True,
-	"deb": {
-		"ticker": "JSML36",
-		"form": "Escritural",
-		"standardized_deed": False,
-		"serie": "003",
-		"issuance": 6,
-		"situation": "Excluído",
-		"issuer_name": "JSL S.A",
-		"early_redemption": False,
-		"cnpj": 52548435000179,
-		"tax_incentive_debenture": False,
-		"isin": "BRJSLGDBS095",
-		"issuance_date": "2013-07-15",
-		"maturity_date": "2020-07-15",
-		"collateral": "Quirografária",
-		"class": "Simples",
-		"indexer": "IPCA",
-		"premium": "",
-		"fees": "7.5% a.a. a cada 12 meses. Primeiro pagamento em 15/07/2014",
-		"amortization": "50.0% a.a. a cada 12 meses. Primeiro pagamento em 15/07/2019"
-	}
-}
-
-json_schema = generate_json_schema(json_data)
-
-# Imprimir o esquema gerado
-print(json.dumps(json_schema, indent=4))
 
 
 
+
+def generate_json_schema_v2(json_data):
+    def set_defaults(validator, properties, instance, schema):
+        for prop, subschema in properties.items():
+            if "type" not in subschema:
+                if isinstance(instance, list):
+                    subschema["type"] = "array"
+                elif isinstance(instance, dict):
+                    subschema["type"] = "object"
+            if "properties" in subschema:
+                set_defaults(validator, subschema["properties"], instance.get(prop, {}), subschema)
+
+    def extend_with_defaults(validator_class):
+        ValidateProperties = validator_class.VALIDATORS["properties"]
+
+        def set_defaults(validator, properties, instance, schema):
+            for error in ValidateProperties(validator, properties, instance, schema):
+                yield error
+
+            for prop in instance:
+                if prop not in properties:
+                    for error in validator.descend(schema.get("additionalProperties", {}), instance[prop], schema, path=prop):
+                        yield error
+
+        return validators.extend(validator_class, {"properties": set_defaults})
+
+    schema = {}
+    validator = extend_with_defaults(Draft7Validator)(schema)
+    set_defaults(validator, {}, json_data, schema)
+    return schema
