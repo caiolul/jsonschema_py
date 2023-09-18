@@ -1,57 +1,59 @@
 import json
+
 from jsonschema import Draft7Validator, validators
+
 
 def generate_json_schema(json_data):
     schema = {}
 
     def walk(current_data, current_schema):
         if isinstance(current_data, dict):
-            current_schema['type'] = 'object'
-            current_schema['properties'] = {}
+            current_schema["type"] = "object"
+            current_schema["properties"] = {}
             for key, value in current_data.items():
-                current_schema['properties'][key] = {}
-                walk(value, current_schema['properties'][key])
+                current_schema["properties"][key] = {}
+                walk(value, current_schema["properties"][key])
         elif isinstance(current_data, list):
-            current_schema['type'] = 'array'
-            current_schema['items'] = {}
+            current_schema["type"] = "array"
+            current_schema["items"] = {}
             if len(current_data) > 0:
-                walk(current_data[0], current_schema['items'])
+                walk(current_data[0], current_schema["items"])
         else:
-            current_schema['type'] = 'string'
+            current_schema["type"] = "string"
 
     walk(json_data, schema)
     return schema
 
 
-
-
-
 def generate_json_schema_v2(json_data):
-    def set_defaults(validator, properties, instance, schema):
-        for prop, subschema in properties.items():
-            if "type" not in subschema:
-                if isinstance(instance, list):
-                    subschema["type"] = "array"
-                elif isinstance(instance, dict):
-                    subschema["type"] = "object"
-            if "properties" in subschema:
-                set_defaults(validator, subschema["properties"], instance.get(prop, {}), subschema)
+    def parse_object(obj):
+        schema = {"type": "object", "properties": {}, "required": []}
+        for key, value in obj.items():
+            schema["properties"][key] = parse(value)
+            schema["required"].append(key)
+        return schema
 
-    def extend_with_defaults(validator_class):
-        ValidateProperties = validator_class.VALIDATORS["properties"]
+    def parse_array(arr):
+        if len(arr) == 0:
+            return {"type": "array", "items": {}}
+        else:
+            return {"type": "array", "items": parse(arr[0])}
 
-        def set_defaults(validator, properties, instance, schema):
-            for error in ValidateProperties(validator, properties, instance, schema):
-                yield error
+    def parse(value):
+        if isinstance(value, dict):
+            return parse_object(value)
+        elif isinstance(value, list):
+            return parse_array(value)
+        elif isinstance(value, bool):
+            return {"type": "boolean"}
+        elif isinstance(value, int):
+            return {"type": "integer"}
+        elif isinstance(value, float):
+            return {"type": "number"}
+        elif value is None:
+            return {"type": "null"}
+        else:
+            return {"type": "string"}
 
-            for prop in instance:
-                if prop not in properties:
-                    for error in validator.descend(schema.get("additionalProperties", {}), instance[prop], schema, path=prop):
-                        yield error
-
-        return validators.extend(validator_class, {"properties": set_defaults})
-
-    schema = {}
-    validator = extend_with_defaults(Draft7Validator)(schema)
-    set_defaults(validator, {}, json_data, schema)
+    schema = parse(json_data)
     return schema

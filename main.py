@@ -1,12 +1,13 @@
-from flask import Flask, request, jsonify
 import json
+
+from flask import Flask, jsonify, request
+
 from json_schema import generate_json_schema, generate_json_schema_v2
+
 app = Flask(__name__)
 
-# def generate_json_schema(json_data):
-#     # Função para gerar o esquema JSON
 
-@app.route('/v1/generate_schema', methods=['POST'])
+@app.route("/v1/generate_schema", methods=["POST"])
 def generate_schema_v1():
     try:
         json_data = request.get_json()
@@ -18,7 +19,8 @@ def generate_schema_v1():
     except json.JSONDecodeError as e:
         return "Invalid JSON format: " + str(e), 400
 
-@app.route('/v2/generate_schema', methods=['POST'])
+
+@app.route("/v2/generate_schema", methods=["POST"])
 def generate_schema_v2():
     try:
         json_data = request.get_json()
@@ -29,5 +31,7 @@ def generate_schema_v2():
             return "Invalid JSON data", 400
     except json.JSONDecodeError as e:
         return "Invalid JSON format: " + str(e), 400
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     app.run(debug=True)
